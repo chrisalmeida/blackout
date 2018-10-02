@@ -13,7 +13,7 @@ defmodule Blackout.MixProject do
       source_url: "https://github.com/chrisalmeida/blackout",
       package: [
         name: "blackout",
-        licences: [],
+        licenses: ["MIT"],
         links: %{"Github" => "https://github.com/chrisalmeida/blackout"}
       ]
     ]
