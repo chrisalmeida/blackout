@@ -52,7 +52,7 @@ defmodule BlackoutTest do
     nodes = [Node.self()]
     expiration = 60_000
     {:ok, :atomic} = Blackout.join_cluster(@schema_name, nodes)
-    result = Blackout.check_bucket(@schema_name, @bucket_name, 1, expiration)
+    _result = Blackout.check_bucket(@schema_name, @bucket_name, 1, expiration)
     # this would allow for time to be decremented
     :timer.sleep(100)
     {:atomic, :ok} = Blackout.delete_bucket(@schema_name, @bucket_name)
