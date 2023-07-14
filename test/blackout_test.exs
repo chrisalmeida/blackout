@@ -48,6 +48,27 @@ defmodule BlackoutTest do
     assert result == :rate_limited
   end
 
+  test "Blackout returns :rate_limited successfully with custom increment" do
+    nodes = [Node.self()]
+    expiration = 60_000
+    allowed_checks = 5
+    {:ok, :atomic} = Blackout.join_cluster(@schema_name, nodes)
+
+    {:atomic, {:ok, ^expiration}} =
+      Blackout.check_bucket(
+        @schema_name,
+        @bucket_name,
+        allowed_checks,
+        expiration,
+        allowed_checks
+      )
+
+    {:atomic, {result, _expire_at}} =
+      Blackout.check_bucket(@schema_name, @bucket_name, allowed_checks, expiration)
+
+    assert result == :rate_limited
+  end
+
   test "Blackout deletes bucket successfully" do
     nodes = [Node.self()]
     expiration = 60_000
