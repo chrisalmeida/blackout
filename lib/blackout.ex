@@ -78,7 +78,7 @@ defmodule Blackout do
       iex> Blackout.check_bucket(:my_schema, "my_bucket_name", 1, 60_000)
       {:atomic, {:rate_limited, 59155}}
   """
-  def check_bucket(schema_name, bucket_name, count_limit, time_limit) do
+  def check_bucket(schema_name, bucket_name, count_limit, time_limit, count_incr \\ 1) do
     :mnesia.transaction(fn ->
       matches = :mnesia.read(schema_name, bucket_name)
 
@@ -86,14 +86,14 @@ defmodule Blackout do
         # insert inital timestamp and count
         [] ->
           now = timestamp()
-          val = {now, 1}
+          val = {now, count_incr}
           insert_bucket(schema_name, bucket_name, val)
           {:ok, time_limit}
 
         # update existing bucket timestamp and count
         [{^schema_name, ^bucket_name, {_expiration, _count} = val}] ->
           {allow_or_deny, {expiration, time_left, count}} =
-            check_limited(bucket_name, val, count_limit, time_limit)
+            check_limited(bucket_name, val, count_limit, time_limit, count_incr)
 
           insert_bucket(schema_name, bucket_name, {expiration, count})
           {allow_or_deny, time_left}
@@ -128,7 +128,13 @@ defmodule Blackout do
   defp timestamp(), do: :erlang.system_time(:milli_seconds)
 
   # Update bucket expiration and counter
-  defp check_limited(_bucket_name, {expiration, current_count}, count_limit, time_limit) do
+  defp check_limited(
+         _bucket_name,
+         {expiration, current_count},
+         count_limit,
+         time_limit,
+         count_incr
+       ) do
     time_now = timestamp()
     milliseconds_since_expiration = time_now - expiration
     expired? = milliseconds_since_expiration >= time_limit
@@ -138,14 +144,13 @@ defmodule Blackout do
       # reset
       expiration = time_now
       time_left = 0
-      count = 1
-      {:ok, {expiration, time_left, count}}
+      {:ok, {expiration, time_left, count_incr}}
     else
       rate_limited? = current_count >= count_limit
 
       if rate_limited?,
         do: {:rate_limited, {expiration, time_left, current_count}},
-        else: {:ok, {expiration, time_left, current_count + 1}}
+        else: {:ok, {expiration, time_left, current_count + count_incr}}
     end
   end
 
